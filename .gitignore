@@ -1,0 +1,10 @@
+node_modules/
+.npm-cache/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+src/generated/
+*.log
+.local-postgres/
