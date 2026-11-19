@@ -75,12 +75,27 @@ test('missing profile is null; repeated seed reconciles stale data and serves ne
     profileData.skills.map((skill) => skill.name),
   );
   assert.equal(profile.links[0].url, profileData.links[0].url);
-  assert.equal(profile.experience[0].startDate, '2024-01-01T00:00:00.000Z');
-  assert.equal(profile.experience[0].endDate, null);
   assert.deepEqual(
-    profile.experience[0].achievements,
-    profileData.experience[0].achievements,
+    profile.experience,
+    [...profileData.experience]
+      .sort(
+        (a, b) =>
+          b.startDate.getTime() - a.startDate.getTime() ||
+          a.id.localeCompare(b.id),
+      )
+      .map(({ company, position, startDate, endDate, achievements }) => ({
+        company,
+        position,
+        startDate: startDate.toISOString(),
+        endDate: endDate?.toISOString() ?? null,
+        achievements,
+      })),
   );
-  assert.equal(profile.projects[0].url, profileData.projects[0].url);
+  assert.deepEqual(
+    profile.projects,
+    [...profileData.projects]
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id))
+      .map(({ name, url }) => ({ name, url })),
+  );
   await request(app.getHttpServer()).get('/health').expect(200);
 });
