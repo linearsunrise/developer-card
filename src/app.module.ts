@@ -22,6 +22,14 @@ import { createProfileLoaders } from './profile/profile.loaders';
         playground: false,
         introspection: true,
         includeStacktraceInErrorResponses: false,
+        formatError: (error) =>
+          error.extensions?.code === 'INTERNAL_SERVER_ERROR'
+            ? {
+                ...error,
+                message: 'Internal server error',
+                extensions: { code: 'INTERNAL_SERVER_ERROR' },
+              }
+            : error,
         plugins: [ApolloServerPluginLandingPageLocalDefault({ embed: true })],
         context: () => ({ loaders: createProfileLoaders(repository) }),
       }),

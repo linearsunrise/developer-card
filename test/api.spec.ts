@@ -10,12 +10,16 @@ import { ProfileRepository } from '../src/profile/profile.repository';
 
 let app: INestApplication;
 const calls = { skills: 0, links: 0, experience: 0, projects: 0 };
+let databaseFailure: Error | undefined;
 const repository = {
-  findProfile: async () => ({
-    id: 'main',
-    name: 'Test Developer',
-    description: 'Test profile',
-  }),
+  findProfile: async () => {
+    if (databaseFailure) throw databaseFailure;
+    return {
+      id: 'main',
+      name: 'Test Developer',
+      description: 'Test profile',
+    };
+  },
   findSkills: async () => {
     calls.skills++;
     return [{ id: 'ts', profileId: 'main', name: 'TypeScript' }];
@@ -37,7 +41,12 @@ const repository = {
 before(async () => {
   const module = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(PrismaService)
-    .useValue({ $queryRaw: async () => [{ value: 1 }] })
+    .useValue({
+      $queryRaw: async () => {
+        if (databaseFailure) throw databaseFailure;
+        return [{ value: 1 }];
+      },
+    })
     .overrideProvider(ProfileRepository)
     .useValue(repository)
     .compile();
@@ -85,4 +94,47 @@ test('Sandbox and readiness endpoint are available', async () => {
   await request(app.getHttpServer())
     .get('/health')
     .expect(200, { status: 'ok' });
+});
+
+test('database failures are redacted and readiness recovers', async () => {
+  databaseFailure = new Error(
+    'Invalid prisma.profile.findUnique(): private-db.internal',
+  );
+  try {
+    const response = await request(app.getHttpServer())
+      .post('/graphql')
+      .send({ query: '{ profile { name } }' })
+      .expect(200);
+    assert.equal(response.body.data.profile, null);
+    assert.equal(response.body.errors[0].message, 'Internal server error');
+    assert.deepEqual(response.body.errors[0].extensions, {
+      code: 'INTERNAL_SERVER_ERROR',
+    });
+    assert.doesNotMatch(
+      JSON.stringify(response.body),
+      /prisma|private-db|stacktrace/,
+    );
+    await request(app.getHttpServer()).get('/health').expect(503, {
+      message: 'Database unavailable',
+      error: 'Service Unavailable',
+      statusCode: 503,
+    });
+  } finally {
+    databaseFailure = undefined;
+  }
+  await request(app.getHttpServer())
+    .get('/health')
+    .expect(200, { status: 'ok' });
+});
+
+test('GraphQL validation errors remain useful to clients', async () => {
+  const response = await request(app.getHttpServer())
+    .post('/graphql')
+    .send({ query: '{ profile { unknownField } }' })
+    .expect(400);
+  assert.equal(
+    response.body.errors[0].extensions.code,
+    'GRAPHQL_VALIDATION_FAILED',
+  );
+  assert.match(response.body.errors[0].message, /unknownField/);
 });
