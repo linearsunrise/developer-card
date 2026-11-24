@@ -100,22 +100,28 @@ export const profileData = {
   ],
   projects: [
     {
+      id: 'developer-card',
+      name: 'Developer Card — цифровая визитка на NestJS и GraphQL',
+      url: 'https://github.com/linearsunrise/developer-card',
+      sortOrder: 0,
+    },
+    {
       id: 'zware',
       name: 'zware — редактор волновых таблиц',
       url: 'https://linearsunrise.github.io/zware/',
-      sortOrder: 0,
+      sortOrder: 1,
     },
     {
       id: 'delahaye-dessins',
       name: 'Delahaye Dessins — геометрические рисунки на Haskell',
       url: 'https://github.com/linearsunrise/delahaye-dessins',
-      sortOrder: 1,
+      sortOrder: 2,
     },
     {
       id: 'twisting-orbits',
       name: 'Twisting Orbits — интерактивная генеративная графика',
       url: 'https://linearsunrise.github.io/',
-      sortOrder: 2,
+      sortOrder: 3,
     },
   ],
 };
